@@ -32,6 +32,8 @@ dependencies:
     sdk: flutter
   barcode_scan2: any
   boleto_utils: ^1.0.3
+  flutter_barcode_scanner: any
+  camera: ^0.10.5+9
 
 
   # The following adds the Cupertino Icons font to your application.
