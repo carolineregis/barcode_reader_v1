@@ -73,8 +73,10 @@ class _HomeState extends State<Home> {
     ).then(
       (barcode) async {
         if (barcode.rawContent != null) {
-          boletoValidado = boletoUtils.validarBoleto(
-              '34191.75124 34567.871230 41234.560005 1 96050000026035'); //MOCADO
+          // Código de barras mocado para testes
+          // boletoValidado = boletoUtils.validarBoleto(
+          //     '34191.75124 34567.871230 41234.560005 1 96050000026035');
+          boletoValidado = boletoUtils.validarBoleto(barcode.rawContent);
           await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => InfosBoleto(boletoValidado),
@@ -98,7 +100,7 @@ class _HomeState extends State<Home> {
           children: [
             ElevatedButton(
               onPressed: () async => await startBarcodeScanStream(context),
-              child: const Text('Start barcode scan'),
+              child: const Text('Escanear boleto'),
             ),
           ],
         ),
@@ -112,7 +114,42 @@ class PagamentoConcluido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold();
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image(
+              image: AssetImage('assets/complete.png'),
+              width: 150,
+            ),
+            Text("Pagamento concluído!")
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class BoletoVencido extends StatelessWidget {
+  const BoletoVencido({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image(
+              image: AssetImage('assets/error.png'),
+              width: 150,
+            ),
+            Text("Boleto vencido!")
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -127,7 +164,26 @@ class InfosBoleto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final utcDate = boletoValidado?.vencimento?.toUtc();
-    String formatedDate = DateFormat('dd/MM/yyyy').format(utcDate!);
+    var formatedExpiringDate;
+    var goToPage;
+
+    if (utcDate != null) {
+      formatedExpiringDate = DateFormat('dd/MM/yyyy').format(utcDate);
+    }
+
+    final today = DateTime.now().toUtc();
+    final isExpired = utcDate?.day.compareTo(today.day);
+
+    if (isExpired != null) {
+      goToPage = isExpired == 0 || isExpired > 0
+          ? PagamentoConcluido()
+          : BoletoVencido();
+    }
+
+    if (isExpired == null) {
+      goToPage = Home();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Confirme os dados de pagamento'),
@@ -172,7 +228,7 @@ class InfosBoleto extends StatelessWidget {
                           children: [
                             Container(
                               child: SelectableText(
-                                'R\$ ${boletoValidado?.valor}\n',
+                                'R\$ ${boletoValidado?.valor ?? 'Sem dados'}\n',
                                 style: GoogleFonts.inconsolata(
                                     fontSize: 30,
                                     decorationColor: Colors.purple[900],
@@ -215,7 +271,7 @@ class InfosBoleto extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: SelectableText(
-                        '${boletoValidado?.bancoEmissor?.banco}\n',
+                        '${boletoValidado?.bancoEmissor?.banco ?? 'Sem dados'}\n',
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -245,7 +301,7 @@ class InfosBoleto extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: SelectableText(
-                        '${formatedDate}\n',
+                        '${formatedExpiringDate ?? 'Sem dados'}\n',
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -258,10 +314,11 @@ class InfosBoleto extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding:
-                          EdgeInsets.only(left: 6, right: 6, top: 8, bottom: 8),
+                      padding: EdgeInsets.only(
+                          left: 6, right: 6, top: 16, bottom: 8),
                       child: const Text(
                         'Código do boleto',
                         style: TextStyle(
@@ -274,12 +331,14 @@ class InfosBoleto extends StatelessWidget {
                       padding:
                           EdgeInsets.only(left: 6, right: 6, top: 8, bottom: 0),
                       height: 40,
+                      width: 350,
                       decoration: BoxDecoration(
                         color: Colors.pink[50],
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: SelectableText(
-                        '${boletoValidado?.codigoBarras}\n',
+                        '${boletoValidado?.codigoBarras ?? 'Sem dados'}\n',
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.bold),
                       ),
@@ -288,13 +347,15 @@ class InfosBoleto extends StatelessWidget {
                 ),
               ],
             ),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    ElevatedButton(
+            Padding(
+              padding: EdgeInsets.all(12),
+            ),
+            if (boletoValidado?.codigoBarras != null)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
                       style: ButtonStyle(
                         backgroundColor: MaterialStateProperty.all(
                             Color.fromARGB(176, 233, 221, 255)),
@@ -307,61 +368,48 @@ class InfosBoleto extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => Home()),
-                        );
-                      },
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(color: Color.fromARGB(255, 181, 0, 0)),
-                      ),
-                    )
-                  ],
-                ),
-                Column(
-                  children: [
-                    ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(
-                            Color.fromARGB(176, 233, 221, 255)),
-                        shape: MaterialStatePropertyAll(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (
+                          MaterialPageRoute(
+                            builder: (
                               context,
                             ) =>
-                                    PagamentoConcluido()));
+                                goToPage,
+                          ),
+                        );
                       },
                       child: const Text('Confirmar Pagamento'),
-                    )
-                  ],
+                    ),
+                  )
+                ],
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  // direction: Axis.vertical,
+                  child: ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(
+                          Color.fromARGB(176, 233, 221, 255)),
+                      shape: MaterialStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => Home()),
+                      );
+                    },
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(color: Color.fromARGB(255, 181, 0, 0)),
+                    ),
+                  ),
                 )
               ],
-            )
-            // Text('Sucesso'),
-            // Container(
-            //   padding: EdgeInsets.all(16),
-            //   decoration: BoxDecoration(
-            //       color: Colors.pink[50],
-            //       borderRadius: BorderRadius.circular(10)),
-            //   child: SelectableText(
-            //     '${boletoValidado?.sucesso}\n',
-            //     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            //   ),
-            // ),
-            // SelectableText('mensagem: ${boletoValidado?.mensagem}\n'),
-            // SelectableText(
-            //     'Tipo de código de entrada: ${boletoValidado?.tipoCodigoInput}\n'),
-            // SelectableText('Tipo de boleto: ${boletoValidado?.tipoBoleto}\n'),
-            // SelectableText('Código input:\n ${boletoValidado?.codigoInput}\n'),
-            // SelectableText(
-            //     'Linha digitável:\n${boletoValidado?.linhaDigitavel}\n'),
+            ),
           ],
         ),
       ),
